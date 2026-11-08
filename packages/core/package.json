@@ -14,7 +14,8 @@
   "dependencies": {
     "@nexus-bot/discord": "workspace:*",
     "@anthropic-ai/sdk": "^0.131.0",
-    "luxon": "^3.7.2"
+    "luxon": "^3.7.2",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

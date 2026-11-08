@@ -17,7 +17,11 @@
         "ANTHROPIC_API_KEY",
         "ADMIN_INTERNAL_URL",
         "NEXUS_BOT_INTERNAL_TOKEN",
-        "ADMIN_BYPASS_TOKEN"
+        "ADMIN_BYPASS_TOKEN",
+        "FEEDBACK_ANTHROPIC_API_KEY",
+        "FEEDBACK_APP_ID",
+        "FEEDBACK_APP_PRIVATE_KEY",
+        "BLOB_READ_WRITE_TOKEN"
       ]
     },
     "lint": {},

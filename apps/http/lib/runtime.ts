@@ -1,12 +1,23 @@
 import { RaftClient } from "@uw-datasci/raft";
+import { put } from "@vercel/blob";
 import {
   createAdminApi,
+  createGitHubApp,
+  createScreenshotStore,
   eventCreate,
+  feedback,
   parseGuildSettings,
   registry,
+  type BlobPut,
   type DispatchDeps,
 } from "@nexus-bot/core";
-import { EventDraftRepository, SettingsRepository, createDb } from "@nexus-bot/db";
+import {
+  EventDraftRepository,
+  FeedbackDraftRepository,
+  SettingsRepository,
+  UsageRepository,
+  createDb,
+} from "@nexus-bot/db";
 import { createDiscordApi } from "@nexus-bot/discord";
 
 const REQUIRED = [
@@ -40,6 +51,18 @@ export function getRuntime(): Runtime {
   const db = createDb(env.DATABASE_URL, { pooled: true });
   const settings = new SettingsRepository(db);
 
+  // Vercel Blob, for feedback screenshots. A public store: GitHub and the triage workflow load them.
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  const blobPut: BlobPut | undefined = blobToken
+    ? (path, bytes, contentType) =>
+        put(path, Buffer.from(bytes), {
+          access: "public",
+          contentType,
+          addRandomSuffix: true,
+          token: blobToken,
+        })
+    : undefined;
+
   runtime = {
     publicKey: env.DISCORD_PUBLIC_KEY,
     dispatch: {
@@ -67,6 +90,17 @@ export function getRuntime(): Runtime {
         }),
         // A missing key fails each run with a clear card instead of failing every interaction.
         extractEvent: eventCreate.createClaudeExtractor({ apiKey: process.env.ANTHROPIC_API_KEY }),
+        usage: new UsageRepository(db),
+        // /feedback's keys are optional too: missing ones fail feedback runs with a clear message.
+        feedbackDrafts: new FeedbackDraftRepository(db),
+        github: createGitHubApp({
+          appId: process.env.FEEDBACK_APP_ID,
+          privateKey: process.env.FEEDBACK_APP_PRIVATE_KEY,
+        }),
+        screenshots: createScreenshotStore({ put: blobPut }),
+        extractFeedback: feedback.createFeedbackExtractor({
+          apiKey: process.env.FEEDBACK_ANTHROPIC_API_KEY,
+        }),
       },
     },
   };

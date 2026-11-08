@@ -16,6 +16,7 @@
     "@nexus-bot/db": "workspace:*",
     "@nexus-bot/discord": "workspace:*",
     "@uw-datasci/raft": "^1.0.1",
+    "@vercel/blob": "^2.8.2",
     "next": "^16.4.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

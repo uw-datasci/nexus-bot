@@ -4,3 +4,4 @@ export * from "./connection";
 export * from "./settings.repository";
 export * from "./usage.repository";
 export * from "./event-drafts.repository";
+export * from "./feedback-drafts.repository";

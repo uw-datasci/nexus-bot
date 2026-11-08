@@ -5,5 +5,8 @@ export * from "./registry";
 export * from "./dispatch";
 export * from "./services";
 export * from "./admin-api";
+export * from "./github-app";
+export * from "./screenshots";
 export { modules, registry } from "./features";
 export * as eventCreate from "./features/event-create";
+export * as feedback from "./features/feedback";

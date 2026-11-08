@@ -1,3 +1,4 @@
+import type { feedback } from "@nexus-bot/core";
 import type { Db } from "./connection";
 
 export interface UsageRun {
@@ -8,7 +9,7 @@ export interface UsageRun {
 }
 
 /** discord.usage: one row per feature run, for rate limits. Never holds message content. */
-export class UsageRepository {
+export class UsageRepository implements feedback.UsageStore {
   constructor(private readonly sql: Db) {}
 
   async record({ guildId, userId, feature, channelId = null }: UsageRun): Promise<void> {

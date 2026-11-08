@@ -7,9 +7,13 @@
  *   pnpm register-commands --dry-run    print what would be registered
  */
 import { registry } from "@nexus-bot/core";
-import { createDiscordApi } from "@nexus-bot/discord";
+import { ApplicationCommandType, createDiscordApi } from "@nexus-bot/discord";
 import { hasFlag, loadEnv, requireEnv } from "./lib/env";
 import { readGuildsConfig, registrationPlan } from "./lib/guilds-config";
+
+/** `/ping` for slash commands, `"Send as feedback" (message)` for right-click ones. */
+const show = (c: { name: string; type?: ApplicationCommandType }) =>
+  c.type === ApplicationCommandType.Message ? `"${c.name}" (message)` : `/${c.name}`;
 
 loadEnv();
 const plan = registrationPlan(readGuildsConfig(), registry);
@@ -17,7 +21,7 @@ const plan = registrationPlan(readGuildsConfig(), registry);
 if (hasFlag("--dry-run")) {
   for (const { guild, commands } of plan) {
     console.log(
-      `${guild.name} (${guild.id}, ${guild.parsed.kind}): ${commands.map((c) => `/${c.name}`).join(" ") || "(none)"}`
+      `${guild.name} (${guild.id}, ${guild.parsed.kind}): ${commands.map(show).join(" ") || "(none)"}`
     );
   }
   process.exit(0);
@@ -35,7 +39,5 @@ for (const { guild, commands } of plan) {
     guild.id,
     commands
   );
-  console.log(
-    `${guild.name} (${guild.id}): ${registered.map((c) => `/${c.name}`).join(" ") || "(none)"}`
-  );
+  console.log(`${guild.name} (${guild.id}): ${registered.map(show).join(" ") || "(none)"}`);
 }

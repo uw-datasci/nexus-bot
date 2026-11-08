@@ -2,9 +2,12 @@ import type {
   API,
   APIChatInputApplicationCommandInteraction,
   APIInteractionResponse,
+  APIMessageApplicationCommandInteraction,
   APIMessageComponentInteraction,
   APIModalSubmitInteraction,
+  ApplicationCommandType,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
+  RESTPostAPIContextMenuApplicationCommandsJSONBody,
 } from "@nexus-bot/discord";
 import type { Capability } from "./gate";
 import type { Services } from "./services";
@@ -56,6 +59,14 @@ export interface Command extends Gated {
   handle: Handler<APIChatInputApplicationCommandInteraction>;
 }
 
+/** A right-click → Apps command on a message, e.g. "Send as feedback". */
+export interface MessageCommand extends Gated {
+  definition: RESTPostAPIContextMenuApplicationCommandsJSONBody & {
+    type: ApplicationCommandType.Message;
+  };
+  handle: Handler<APIMessageApplicationCommandInteraction>;
+}
+
 export interface ComponentRoute extends Gated {
   handle: Handler<APIMessageComponentInteraction>;
 }
@@ -75,6 +86,7 @@ export interface FeatureModule {
   /** Which guilds get its commands and may use its components. */
   guilds: readonly GuildKind[];
   commands?: readonly Command[];
+  messageCommands?: readonly MessageCommand[];
   /** custom_id action → handler, for buttons and select menus. */
   components?: Readonly<Record<string, ComponentRoute>>;
   /** custom_id action → handler, for modal submits. */

@@ -7,6 +7,7 @@ import {
   type API,
   type APIChatInputApplicationCommandInteraction,
   type APIInteraction,
+  type APIMessageApplicationCommandInteraction,
 } from "@nexus-bot/discord";
 import { can, type Actor, type Capability } from "./gate";
 import type { Registry } from "./registry";
@@ -83,17 +84,30 @@ export async function dispatch(
   switch (interaction.type) {
     case InteractionType.ApplicationCommand: {
       missing = MESSAGES.unknownCommand;
-      if (interaction.data.type !== ApplicationCommandType.ChatInput) break;
-      const found = deps.registry.command(interaction.data.name);
-      const chatInput = interaction as APIChatInputApplicationCommandInteraction;
-      if (found) {
-        target = {
-          module: found.module,
-          capability: found.command.capability,
-          deniedMessage: found.command.deniedMessage,
-          label: `/${interaction.data.name}`,
-          run: () => found.command.handle(chatInput, ctx),
-        };
+      if (interaction.data.type === ApplicationCommandType.ChatInput) {
+        const found = deps.registry.command(interaction.data.name);
+        const chatInput = interaction as APIChatInputApplicationCommandInteraction;
+        if (found) {
+          target = {
+            module: found.module,
+            capability: found.command.capability,
+            deniedMessage: found.command.deniedMessage,
+            label: `/${interaction.data.name}`,
+            run: () => found.command.handle(chatInput, ctx),
+          };
+        }
+      } else if (interaction.data.type === ApplicationCommandType.Message) {
+        const found = deps.registry.messageCommand(interaction.data.name);
+        const onMessage = interaction as APIMessageApplicationCommandInteraction;
+        if (found) {
+          target = {
+            module: found.module,
+            capability: found.command.capability,
+            deniedMessage: found.command.deniedMessage,
+            label: `message command "${interaction.data.name}"`,
+            run: () => found.command.handle(onMessage, ctx),
+          };
+        }
       }
       break;
     }

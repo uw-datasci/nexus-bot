@@ -8,6 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { DateTime } from "luxon";
 import type { APIMessage } from "@nexus-bot/discord";
+import { TIMEZONE, sanitizeContent, sanitizeName } from "../shared/sanitize";
 import {
   EVENT_CATEGORIES,
   type EventCategory,
@@ -22,7 +23,6 @@ const CLAUDE_MODEL = "claude-opus-5-5";
  */
 export const LLM_TIMEOUT_MS = 40_000;
 
-const TIMEZONE = "America/Toronto";
 const MAX_MESSAGE_CHARS = 1_500;
 const MAX_THREAD_CHARS = 24_000;
 const CATEGORIES: ReadonlySet<string> = new Set<string>(EVENT_CATEGORIES);
@@ -53,43 +53,7 @@ export class ExtractionError extends Error {
 
 // ─── Thread sanitization ─────────────────────────────────────────────────────
 
-function sanitizeName(name: string): string {
-  return (
-    name
-      .replaceAll(/[\r\n\t:<>[\]]/g, " ")
-      .trim()
-      .slice(0, 40) || "member"
-  );
-}
-
-/** Drop ASCII control characters except tab and newline. */
-function stripControlChars(text: string): string {
-  return Array.from(text)
-    .filter((ch) => {
-      const code = ch.codePointAt(0) ?? 0;
-      return code === 9 || code === 10 || (code >= 32 && code !== 127);
-    })
-    .join("");
-}
-
-/** Strip Discord markup the model can't use, control characters, and our own delimiters. */
-export function sanitizeContent(content: string): string {
-  return (
-    stripControlChars(content)
-      // Discord timestamps carry real dates: render them as Toronto wall time.
-      .replaceAll(/<t:(\d{1,12})(?::[tTdDfFR])?>/g, (_, secs: string) =>
-        DateTime.fromSeconds(Number(secs), { zone: TIMEZONE }).toFormat("yyyy-MM-dd HH:mm (cccc)")
-      )
-      .replaceAll(/<@[!&]?\d+>/g, "@someone")
-      .replaceAll(/<#\d+>/g, "#channel")
-      .replaceAll(/<a?:(\w+):\d+>/g, ":$1:")
-      // Thread text is untrusted: don't let it close or reopen the data delimiters.
-      .replaceAll(/<\/?\s*thread\s*>/gi, "")
-      .replaceAll(/[ \t]+/g, " ")
-      .replaceAll(/\n{3,}/g, "\n\n")
-      .trim()
-  );
-}
+export { sanitizeContent };
 
 function formatLine(message: APIMessage): string | null {
   const content = sanitizeContent(message.content ?? "");

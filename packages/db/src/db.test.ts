@@ -12,7 +12,7 @@ import { UsageRepository } from "./usage.repository";
  * tests drop the `discord` schema. Without it they're skipped (CI always sets it).
  */
 const url = process.env.TEST_DATABASE_URL;
-const ALL = ["0001_discord_schema", "0002_event_drafts"];
+const ALL = ["0001_discord_schema", "0002_event_drafts", "0003_feedback_drafts"];
 
 describe("loadMigrations", () => {
   it("reads the repo's migrations in order", () => {
@@ -46,6 +46,7 @@ describe.skipIf(!url)("database", () => {
       SELECT table_name FROM information_schema.tables WHERE table_schema = 'discord' ORDER BY table_name`;
     expect(tables.map((t) => t.table_name)).toEqual([
       "event_drafts",
+      "feedback_drafts",
       "schema_migrations",
       "settings",
       "usage",

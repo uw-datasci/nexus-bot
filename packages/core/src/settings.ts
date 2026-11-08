@@ -7,6 +7,8 @@
  *   require_linked_accounts  false until B2; see gate.ts
  *   role_ids                 { exec?: [...], admin?: [...], pres?: [...] } Discord role IDs that
  *                            stand for each website role while accounts aren't linked
+ *   feedback_apps            { <app>: { repo, production_url, role_sets, channels? } } apps that
+ *                            take /feedback; see FeedbackApp
  * Any other key is kept as-is in `values` for the features that use it.
  */
 
@@ -17,11 +19,26 @@ export type GuildKind = (typeof GUILD_KINDS)[number];
 export const WEBSITE_ROLES = ["exec", "admin", "pres"] as const;
 export type WebsiteRole = (typeof WEBSITE_ROLES)[number];
 
+/** An app that takes /feedback, from the guild's `feedback_apps` setting. */
+export interface FeedbackApp {
+  /** The key in `feedback_apps`, e.g. `cxc`. */
+  name: string;
+  /** `owner/name` of the GitHub repo the issues go to. */
+  repo: string;
+  /** e.g. https://cxc.uwdatascience.ca: a page URL on this host means Production. */
+  productionUrl: string;
+  /** Who may send feedback: any one set is enough, and every role in that set is needed. */
+  roleSets: string[][];
+  /** Channels (or threads under them) it can be used in. Empty means anywhere. */
+  channels: string[];
+}
+
 export interface GuildSettings {
   guildId: string;
   kind: GuildKind;
   requireLinkedAccounts: boolean;
   roleIds: Partial<Record<WebsiteRole, string[]>>;
+  feedbackApps: Record<string, FeedbackApp>;
   /** Every key, including the ones above, as stored. */
   values: Record<string, unknown>;
 }
@@ -34,6 +51,62 @@ export class SettingsError extends Error {
 }
 
 const SNOWFLAKE = /^\d{17,20}$/;
+const APP_NAME = /^[a-z0-9-]{1,32}$/;
+const REPO = /^[\w.-]+\/[\w.-]+$/;
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const isIdList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((id) => typeof id === "string" && SNOWFLAKE.test(id));
+
+function parseFeedbackApps(raw: unknown, problems: string[]): Record<string, FeedbackApp> {
+  const apps: Record<string, FeedbackApp> = {};
+  if (raw === undefined) return apps;
+  if (!isObject(raw)) {
+    problems.push("`feedback_apps` must map app names to their settings");
+    return apps;
+  }
+  for (const [name, app] of Object.entries(raw)) {
+    const at = `\`feedback_apps.${name}\``;
+    if (!APP_NAME.test(name)) problems.push(`${at}: app names are lowercase letters, digits and -`);
+    if (!isObject(app)) {
+      problems.push(`${at} must be a mapping`);
+      continue;
+    }
+    const before = problems.length;
+    if (typeof app.repo !== "string" || !REPO.test(app.repo))
+      problems.push(`${at}.repo must be "owner/name"`);
+    let productionUrl = "";
+    try {
+      const url = new URL(String(app.production_url));
+      if (url.protocol !== "https:") throw new Error("not https");
+      productionUrl = url.origin;
+    } catch {
+      problems.push(`${at}.production_url must be an https URL`);
+    }
+    const roleSets = app.role_sets;
+    if (
+      !Array.isArray(roleSets) ||
+      roleSets.length === 0 ||
+      !roleSets.every((set) => isIdList(set) && set.length > 0)
+    ) {
+      problems.push(
+        `${at}.role_sets must be a list of role ID lists, e.g. [["<team>"], ["<VP>", "<Design>"]], as quoted strings`
+      );
+    }
+    const channels = app.channels ?? [];
+    if (!isIdList(channels)) problems.push(`${at}.channels must be a list of channel IDs`);
+    if (problems.length > before) continue;
+    apps[name] = {
+      name,
+      repo: app.repo as string,
+      productionUrl,
+      roleSets: roleSets as string[][],
+      channels: channels as string[],
+    };
+  }
+  return apps;
+}
 
 /** Validate a guild's raw key/value settings. Throws SettingsError listing every problem. */
 export function parseGuildSettings(guildId: string, raw: Record<string, unknown>): GuildSettings {
@@ -67,12 +140,15 @@ export function parseGuildSettings(guildId: string, raw: Record<string, unknown>
     }
   }
 
+  const feedbackApps = parseFeedbackApps(raw.feedback_apps, problems);
+
   if (problems.length > 0) throw new SettingsError(problems);
   return {
     guildId,
     kind: kind as GuildKind,
     requireLinkedAccounts: requireLinked as boolean,
     roleIds,
+    feedbackApps,
     values: { ...raw },
   };
 }

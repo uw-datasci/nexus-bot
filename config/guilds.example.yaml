@@ -22,6 +22,18 @@ guilds:
         exec: ["000000000000000000"]
         admin: ["000000000000000000"] # VPs
         pres: ["000000000000000000"]
+      # Apps that take /feedback, and who may send it. Any one role set is enough, and it needs
+      # every role in the set: for CxC, `cxc-team`, or `VP` and `Design` together.
+      feedback_apps:
+        cxc:
+          repo: uw-datasci/cxc
+          # A page URL on this host prefills Production; any other URL prefills Staging.
+          production_url: https://cxc.uwdatascience.ca
+          role_sets:
+            - ["000000000000000000"] # cxc-team
+            - ["000000000000000000", "000000000000000000"] # VP + Design
+          # Optional: only in these channels (threads count by their parent). Empty = anywhere.
+          channels: []
 
   # - name: Public server
   #   id: "000000000000000000"

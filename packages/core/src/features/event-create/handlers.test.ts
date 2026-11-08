@@ -14,6 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AdminApi, CreatedEvent } from "../../admin-api";
 import { dispatch } from "../../dispatch";
 import { createRegistry } from "../../registry";
+import type { Services } from "../../services";
 import { parseGuildSettings } from "../../settings";
 import { eventCreate } from "./index";
 import { ExtractionError } from "./extract";
@@ -177,7 +178,12 @@ function setup({ createDraftEvent }: { createDraftEvent?: AdminApi["createDraftE
     applicationId: APP,
     reportError,
     now: () => clock,
-    services: { eventDrafts: store, adminApi: { createDraftEvent: createDraft }, extractEvent },
+    // Only what /event-create uses.
+    services: {
+      eventDrafts: store,
+      adminApi: { createDraftEvent: createDraft },
+      extractEvent,
+    } as Partial<Services> as Services,
   };
   return {
     rows,

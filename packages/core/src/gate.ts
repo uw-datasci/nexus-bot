@@ -19,6 +19,9 @@ export const CAPABILITIES = {
   "announce.draft": ["exec", "admin"],
   "announce.approve": ["pres"],
   "access.request": ["exec", "admin", "pres"],
+  // /feedback is per app, not per website role: the feature checks each app's `role_sets`
+  // (settings `feedback_apps`), and the card's controls only work for whoever ran it.
+  feedback: "everyone",
 } as const satisfies Record<string, "everyone" | readonly WebsiteRole[]>;
 
 export type Capability = keyof typeof CAPABILITIES;

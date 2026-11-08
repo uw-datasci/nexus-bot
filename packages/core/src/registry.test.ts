@@ -45,6 +45,32 @@ describe("registry", () => {
     });
   });
 
+  it("registers message commands next to slash commands, unique per type", () => {
+    const withMessage = (name: string, commandName: string): FeatureModule => ({
+      ...feature(name, `${name}-cmd`),
+      messageCommands: [
+        {
+          definition: { name: commandName, type: ApplicationCommandType.Message },
+          capability: "ping",
+          handle: () => ({ response: { type: 1 } }),
+        },
+      ],
+    });
+    const registry = createRegistry([withMessage("a", "Send as thing")]);
+    expect(registry.commandsFor("exec").map((c) => [c.name, c.type])).toEqual([
+      ["a-cmd", ApplicationCommandType.ChatInput],
+      ["Send as thing", ApplicationCommandType.Message],
+    ]);
+    expect(registry.messageCommand("Send as thing")?.module.name).toBe("a");
+    expect(registry.command("Send as thing")).toBeNull();
+    expect(() => createRegistry([withMessage("a", "Same"), withMessage("b", "Same")])).toThrow(
+      /Message command "Same" is defined by both a and b/
+    );
+    expect(() => createRegistry([withMessage("a", "x".repeat(33))])).toThrow(
+      /Invalid message command name/
+    );
+  });
+
   it("registers /ping for the exec server only", () => {
     expect(realRegistry.commandsFor("exec").map((c) => c.name)).toContain("ping");
     expect(realRegistry.commandsFor("public")).toEqual([]);
@@ -77,6 +103,54 @@ describe("settings", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(SettingsError);
       expect((error as SettingsError).problems).toHaveLength(5);
+    }
+  });
+});
+
+describe("feedback_apps", () => {
+  const ROLE = "200000000000000009";
+  const app = (overrides: Record<string, unknown> = {}) => ({
+    repo: "uw-datasci/cxc",
+    production_url: "https://cxc.uwdatascience.ca/",
+    role_sets: [[ROLE], [EXEC_ROLE, VP_ROLE]],
+    ...overrides,
+  });
+
+  it("parses each app, with no channels meaning anywhere", () => {
+    const parsed = settings({ feedback_apps: { cxc: app() } });
+    expect(parsed.feedbackApps).toEqual({
+      cxc: {
+        name: "cxc",
+        repo: "uw-datasci/cxc",
+        productionUrl: "https://cxc.uwdatascience.ca",
+        roleSets: [[ROLE], [EXEC_ROLE, VP_ROLE]],
+        channels: [],
+      },
+    });
+    expect(settings().feedbackApps).toEqual({});
+  });
+
+  it("lists every problem with an app", () => {
+    try {
+      settings({
+        feedback_apps: {
+          Bad: app({
+            repo: "cxc",
+            production_url: "http://cxc.uwdatascience.ca",
+            role_sets: [[]],
+            channels: [1],
+          }),
+        },
+      });
+      expect.unreachable();
+    } catch (error) {
+      expect((error as SettingsError).problems).toEqual([
+        expect.stringMatching(/feedback_apps.Bad.*lowercase/),
+        expect.stringMatching(/repo must be "owner\/name"/),
+        expect.stringMatching(/production_url must be an https URL/),
+        expect.stringMatching(/role_sets must be a list of role ID lists/),
+        expect.stringMatching(/channels must be a list of channel IDs/),
+      ]);
     }
   });
 });

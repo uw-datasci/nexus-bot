@@ -12,6 +12,10 @@ describe("guilds config", () => {
     const guilds = parseGuildsConfig(EXAMPLE);
     expect(guilds.map((g) => g.parsed.kind)).toEqual(["exec"]);
     expect(guilds[0]?.settings.require_linked_accounts).toBe(false);
+    expect(guilds[0]?.parsed.feedbackApps.cxc).toMatchObject({
+      repo: "uw-datasci/cxc",
+      productionUrl: "https://cxc.uwdatascience.ca",
+    });
   });
 
   it("refuses unquoted IDs, which YAML would round", () => {
@@ -45,6 +49,11 @@ describe("guilds config", () => {
 
   it("plans each guild's full command set from the registry", () => {
     const plan = registrationPlan(parseGuildsConfig(EXAMPLE), registry);
-    expect(plan[0]?.commands.map((c) => c.name)).toEqual(["ping", "event-create"]);
+    expect(plan[0]?.commands.map((c) => c.name)).toEqual([
+      "ping",
+      "event-create",
+      "feedback",
+      "Send as feedback",
+    ]);
   });
 });

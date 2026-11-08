@@ -1,11 +1,9 @@
 import {
-  ChannelType,
   ComponentType,
   deferred,
   deferredUpdate,
   type APIChatInputApplicationCommandInteraction,
   type APIInteractionResponseCallbackData,
-  type APIMessage,
   type APIMessageComponentInteraction,
   type APIModalSubmitInteraction,
 } from "@nexus-bot/discord";
@@ -26,6 +24,13 @@ import {
   updateMessage,
   validationErrorMessage,
 } from "./cards";
+import {
+  THREAD_CHANNEL_TYPES,
+  getStarterMessage,
+  readModalValues,
+  runInBackground as runSharedInBackground,
+  statusOf,
+} from "../shared/discord";
 import { ExtractionError } from "./extract";
 import { formatTorontoTime, parseTorontoTime } from "./time";
 import {
@@ -52,36 +57,11 @@ export const EXEC_WINDOW_S = 60 * 60;
 export const THREAD_COOLDOWN_S = 60;
 
 const ROUTE = "discord:event-bot";
-const THREAD_CHANNEL_TYPES: ReadonlySet<number> = new Set([
-  ChannelType.AnnouncementThread,
-  ChannelType.PublicThread,
-  ChannelType.PrivateThread,
-]);
 const CATEGORIES: ReadonlySet<string> = new Set<string>(EVENT_CATEGORIES);
 
 type DraftLookup = { draft: EventDraft } | { rejection: string };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Collect `custom_id → value` from a modal submit (action rows or label components). */
-export function readModalValues(components: unknown[] = []): Record<string, string> {
-  const values: Record<string, string> = {};
-  const visit = (node: unknown) => {
-    if (!node || typeof node !== "object") return;
-    const c = node as {
-      custom_id?: unknown;
-      value?: unknown;
-      components?: unknown[];
-      component?: unknown;
-    };
-    if (typeof c.custom_id === "string" && typeof c.value === "string")
-      values[c.custom_id] = c.value;
-    c.components?.forEach(visit);
-    if (c.component) visit(c.component);
-  };
-  components.forEach(visit);
-  return values;
-}
 
 /** Modal prefill: the last submitted values win over the LLM's extraction. */
 export function prefillValues(draft: EventDraft): Partial<DraftSubmission> {
@@ -94,8 +74,6 @@ export function prefillValues(draft: EventDraft): Partial<DraftSubmission> {
   };
 }
 
-const statusOf = (error: unknown) => (error as { status?: unknown })?.status;
-
 /** A short, safe explanation for the failure card (details go to Raft, not Discord). */
 function describeFailure(error: unknown): string {
   if (error instanceof ExtractionError) return error.message;
@@ -105,62 +83,13 @@ function describeFailure(error: unknown): string {
   return "Something went wrong while reading the thread. The error has been logged for the dev team.";
 }
 
-/**
- * Background work runs after the reply, where nothing above can catch it: report failures to
- * Raft ourselves and, where possible, show the failure in Discord.
- */
-async function runInBackground(
+const runInBackground = (
   ctx: HandlerContext,
   step: string,
   context: Record<string, unknown>,
   work: () => Promise<void>,
   onFailure?: (error: unknown) => Promise<void>
-): Promise<void> {
-  try {
-    await work();
-  } catch (error) {
-    await ctx.reportError(
-      error,
-      {
-        route: ROUTE,
-        step,
-        ...context,
-        ...(error instanceof ExtractionError && error.detail ? { detail: error.detail } : {}),
-      },
-      error instanceof ExtractionError ? error.severity : "error"
-    );
-    if (!onFailure) return;
-    try {
-      await onFailure(error);
-    } catch (followUpError) {
-      console.error(`[event-create] Failed to show the ${step} failure in Discord:`, followUpError);
-    }
-  }
-}
-
-/** A single message, or null if it doesn't exist (or isn't visible to the bot). */
-async function getMessageOrNull(
-  ctx: HandlerContext,
-  channelId: string,
-  messageId: string
-): Promise<APIMessage | null> {
-  try {
-    return await ctx.discord.channels.getMessage(channelId, messageId);
-  } catch (error) {
-    if (statusOf(error) === 404 || statusOf(error) === 403) return null;
-    throw error;
-  }
-}
-
-/**
- * The message a thread was started from has the thread's id. For forum posts it lives in the
- * thread itself; for threads started from a channel message it lives in the parent.
- */
-async function getStarterMessage(ctx: HandlerContext, threadId: string, parentId: string | null) {
-  const inThread = await getMessageOrNull(ctx, threadId, threadId);
-  if (inThread || !parentId) return inThread;
-  return getMessageOrNull(ctx, parentId, threadId);
-}
+) => runSharedInBackground(ctx, ROUTE, step, context, work, onFailure);
 
 // ─── /event-create ───────────────────────────────────────────────────────────
 

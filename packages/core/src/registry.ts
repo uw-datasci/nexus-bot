@@ -2,22 +2,25 @@ import {
   ApplicationIntegrationType,
   InteractionContextType,
   parseCustomId,
-  type RESTPostAPIChatInputApplicationCommandsJSONBody,
+  type RESTPostAPIApplicationGuildCommandsJSONBody,
 } from "@nexus-bot/discord";
 import type { GuildKind } from "./settings";
-import type { Command, ComponentRoute, FeatureModule, ModalRoute } from "./types";
+import type { Command, ComponentRoute, FeatureModule, MessageCommand, ModalRoute } from "./types";
 
 export interface Registry {
   readonly modules: readonly FeatureModule[];
   /** What `register-commands` sends for a guild of this kind (bulk overwrite). */
-  commandsFor(kind: GuildKind): RESTPostAPIChatInputApplicationCommandsJSONBody[];
+  commandsFor(kind: GuildKind): RESTPostAPIApplicationGuildCommandsJSONBody[];
   command(name: string): { module: FeatureModule; command: Command } | null;
+  messageCommand(name: string): { module: FeatureModule; command: MessageCommand } | null;
   component(customId: string): { module: FeatureModule; route: ComponentRoute; id: string } | null;
   modal(customId: string): { module: FeatureModule; route: ModalRoute; id: string } | null;
 }
 
 const MODULE_NAME = /^[a-z0-9_-]{1,20}$/;
 const COMMAND_NAME = /^[-_\p{Ll}\p{N}]{1,32}$/u;
+/** Message commands show as menu items, so they may have capitals and spaces. */
+const MESSAGE_COMMAND_NAME = /^(?=.*\S)[^\n]{1,32}$/u;
 
 export class RegistryError extends Error {
   constructor(message: string) {
@@ -30,6 +33,7 @@ export class RegistryError extends Error {
 export function createRegistry(modules: readonly FeatureModule[]): Registry {
   const byName = new Map<string, FeatureModule>();
   const commands = new Map<string, { module: FeatureModule; command: Command }>();
+  const messageCommands = new Map<string, { module: FeatureModule; command: MessageCommand }>();
 
   for (const module of modules) {
     if (!MODULE_NAME.test(module.name))
@@ -48,7 +52,26 @@ export function createRegistry(modules: readonly FeatureModule[]): Registry {
         );
       commands.set(name, { module, command });
     }
+
+    // Discord keeps names unique per command type, so a message command may share a slash name.
+    for (const command of module.messageCommands ?? []) {
+      const name = command.definition.name;
+      if (!MESSAGE_COMMAND_NAME.test(name))
+        throw new RegistryError(`Invalid message command name "${name}" in ${module.name}`);
+      const existing = messageCommands.get(name);
+      if (existing)
+        throw new RegistryError(
+          `Message command "${name}" is defined by both ${existing.module.name} and ${module.name}`
+        );
+      messageCommands.set(name, { module, command });
+    }
   }
+
+  // Guild commands only; features can override, e.g. default_member_permissions: "0".
+  const guildOnly = {
+    contexts: [InteractionContextType.Guild],
+    integration_types: [ApplicationIntegrationType.GuildInstall],
+  };
 
   const route = <R>(
     customId: string,
@@ -64,15 +87,11 @@ export function createRegistry(modules: readonly FeatureModule[]): Registry {
   return {
     modules,
     commandsFor: (kind) =>
-      [...commands.values()]
+      [...commands.values(), ...messageCommands.values()]
         .filter(({ module }) => module.guilds.includes(kind))
-        .map(({ command }) => ({
-          // Guild commands only; features can override, e.g. default_member_permissions: "0".
-          contexts: [InteractionContextType.Guild],
-          integration_types: [ApplicationIntegrationType.GuildInstall],
-          ...command.definition,
-        })),
+        .map(({ command }) => ({ ...guildOnly, ...command.definition })),
     command: (name) => commands.get(name) ?? null,
+    messageCommand: (name) => messageCommands.get(name) ?? null,
     component: (customId) => route(customId, (module) => module.components),
     modal: (customId) => route(customId, (module) => module.modals),
   };

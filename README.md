@@ -51,7 +51,9 @@ export const demo: FeatureModule = {
 };
 ```
 
-Then add it to `modules` in `packages/core/src/features/index.ts`. That's the only wiring:
+Right-click → Apps commands on a message go in `messageCommands` (`/feedback`'s **Send as
+feedback** is one). Then add the module to `modules` in `packages/core/src/features/index.ts`.
+That's the only wiring:
 `pnpm register-commands` and the dispatcher read the same registry. Capabilities and the website
 roles they need are in `packages/core/src/gate.ts`.
 
@@ -158,6 +160,59 @@ be confirmed on the other, so anyone mid-draft runs `/event-create` again.
 Rehearse both directions on your personal test app first: point its endpoint at a local or
 preview nexus-bot, then at a preview admin, and back.
 
+## `/feedback`
+
+Organizers turn feedback about an event app into GitHub issues on its repo, where the app's
+triage workflow (nexus-workflows `feedback-triage.yml`) routes them. Spec: Feedback loop §2.
+
+| How it's run                                        | What the bot reads                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `/feedback` with text and/or screenshots            | **Prompt mode**: what was typed and attached. In a thread, the thread is background only.  |
+| `/feedback` submitted empty, in a thread            | The whole thread                                                                           |
+| `/feedback` submitted empty, in a channel           | Messages since the bot's last feedback card there, at most 30 minutes and 25 messages back |
+| Right-click a message → Apps → **Send as feedback** | That message, its attachments, the replies to it and its thread                            |
+
+- Claude Haiku (`claude-haiku-5-5`, `FEEDBACK_ANTHROPIC_API_KEY`) splits it into items: a title,
+  type (bug, change or nit), page, the organizer's words, a one-line summary, links to the
+  messages and screenshots. Questions aren't filed. At most 10 items per run.
+- A **public** preview card lists the items. The runner can leave items out, set the environment
+  for all of them or **Edit** one (title, type, page, summary, environment), then **Create**.
+  Create stays disabled until every kept item has an environment, which is prefilled from the
+  modal or from a page URL (the production host means Production, any other URL Staging). The
+  card warns when the repo is public. Only the runner can use it, and it expires after 1 hour.
+- Create files one issue per item through the nexus-feedback GitHub App, labelled `feedback`,
+  `feedback:<type>` and `env:<prod|staging>`. The body quotes the feedback (with GitHub
+  @-mentions broken up) and ends with `<!-- nexus-feedback {"guild","channel","message","user"} -->`,
+  where `message` is the card, so the workflows can post back. A failed issue can be retried
+  with Create; filed ones are never filed twice.
+- `strictness: relaxed` in the repo's `.github/feedback.yml` merges nits on the same page into one
+  issue; `strict` (CxC, and the default) files one per nit.
+- Screenshots are copied to Vercel Blob when the card is made, because Discord's attachment
+  URLs expire. The issue embeds the Blob URLs.
+- Rate limit: **10 runs per user per hour**, in `discord.usage`. Drafts live in
+  `discord.feedback_drafts`. Errors go to Raft with `route: "discord:feedback"`.
+- Code: `packages/core/src/features/feedback/`, `packages/core/src/github-app.ts` and
+  `packages/core/src/screenshots.ts`.
+
+Who can use it, per app, is the guild's `feedback_apps` setting (see
+`config/guilds.example.yaml`): the repo, the production URL, and role sets, any one of which is
+enough (CxC: `cxc-team`, or `VP` and `Design` together). An app can also be limited to some
+channels. Someone allowed for more than one app picks it in the modal.
+
+### Setting up `/feedback`
+
+1. Install the nexus-feedback GitHub App on the app's repo (cxc), with the labels from
+   uw-datasci/cxc#46 in place.
+2. Create a **public** Vercel Blob store on the nexus-bot project. Vercel adds
+   `BLOB_READ_WRITE_TOKEN`.
+3. Set `FEEDBACK_ANTHROPIC_API_KEY`, `FEEDBACK_APP_ID` and `FEEDBACK_APP_PRIVATE_KEY` (the
+   values in Infisical `/nexus-feedback`). Missing ones fail feedback runs with a clear message;
+   nothing else is affected.
+4. Add `feedback_apps` to the exec server in `config/guilds.yaml` with the real role IDs, then
+   run `pnpm migrate`, `pnpm seed-settings` and `pnpm register-commands`.
+5. The bot needs View Channel, Read Message History and Send Messages (in threads too) where
+   feedback is sent.
+
 ## Checks
 
 ```sh
@@ -183,6 +238,9 @@ variables:
 | `ANTHROPIC_API_KEY`                                                 | `/event-create` extraction (the bot's Claude Console workspace)     |
 | `ADMIN_INTERNAL_URL`, `NEXUS_BOT_INTERNAL_TOKEN`                    | admin's internal API (the token matches admin's)                    |
 | `ADMIN_BYPASS_TOKEN`                                                | optional: Vercel protection bypass, to test against a preview admin |
+| `FEEDBACK_ANTHROPIC_API_KEY`                                        | `/feedback` extraction (the feedback loop's own workspace)          |
+| `FEEDBACK_APP_ID`, `FEEDBACK_APP_PRIVATE_KEY`                       | the nexus-feedback GitHub App, for filing issues                    |
+| `BLOB_READ_WRITE_TOKEN`                                             | a public Vercel Blob store, for feedback screenshots                |
 | `NODE_AUTH_TOKEN`                                                   | read access to `@uw-datasci/raft` (used by `vercel.json`'s install) |
 
 Once it's deployed, set the application's Interactions Endpoint URL to
