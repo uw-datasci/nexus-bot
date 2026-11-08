@@ -1,0 +1,28 @@
+# Copy to config/guilds.yaml (gitignored) and fill in your IDs. Then:
+#   pnpm seed-settings       loads `settings` into discord.settings (safe to re-run)
+#   pnpm register-commands   registers each guild's slash commands
+#
+# IDs only, never tokens or secrets: this file is a template in a public repo.
+# Quote every ID. YAML reads an unquoted 18-digit number as a float and rounds it.
+# Get IDs with Discord's Developer Mode on: right-click the server or role → Copy ID.
+
+guilds:
+  - name: Exec server
+    id: "000000000000000000"
+    settings:
+      # exec: club staff features; public: the members' server (from B10).
+      kind: exec
+      # Stays false until B2 links Discord accounts to website accounts.
+      require_linked_accounts: false
+      # While accounts aren't linked, these Discord roles stand for the website roles.
+      # Capabilities (packages/core/src/gate.ts) say which website roles may use what.
+      role_ids:
+        exec: ["000000000000000000"]
+        admin: ["000000000000000000"] # VPs
+        pres: ["000000000000000000"]
+
+  # - name: Public server
+  #   id: "000000000000000000"
+  #   settings:
+  #     kind: public
+  #     require_linked_accounts: false

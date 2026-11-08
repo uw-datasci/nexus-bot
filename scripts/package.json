@@ -1,0 +1,28 @@
+{
+  "name": "@nexus-bot/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx migrate.ts up",
+    "migrate:status": "tsx migrate.ts status",
+    "seed-settings": "tsx seed-settings.ts",
+    "register-commands": "tsx register-commands.ts",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nexus-bot/core": "workspace:*",
+    "@nexus-bot/db": "workspace:*",
+    "@nexus-bot/discord": "workspace:*",
+    "dotenv": "^17.2.3",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
