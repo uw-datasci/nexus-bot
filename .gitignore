@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds and caches
+.next/
+.turbo/
+.vercel/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets and local config (the repo is public)
+.env
+.env.*
+!.env.example
+config/guilds.yaml
+
+# local tooling
+.DS_Store
+.vscode/
+.claude/settings.local.json
