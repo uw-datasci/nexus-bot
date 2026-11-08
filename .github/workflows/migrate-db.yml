@@ -1,0 +1,54 @@
+name: Run Database Migrations
+
+# Applies packages/db/migrations to the `discord` schema. `main` uses Infisical's prod
+# environment and any other ref uses dev (decided inside the shared workflow).
+# DATABASE_URL in Infisical (folder /db) must be a direct or session-pooler connection for the
+# nexus_bot role: DDL doesn't belong on the transaction pooler.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/db/migrations/**
+      - packages/db/src/migrate.ts
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "migrate" to confirm running migrations'
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 24
+  PNPM_VERSION: 12.8.1
+
+jobs:
+  setup:
+    name: Setup
+    if: github.event_name == 'push' || github.event.inputs.confirm == 'migrate'
+    runs-on: ubuntu-latest
+    outputs:
+      node-version: ${{ env.NODE_VERSION }}
+      pnpm-version: ${{ env.PNPM_VERSION }}
+    steps:
+      - name: Output variables
+        run: echo "Variables mapped to outputs."
+
+  migrate:
+    name: Run Database Migrations
+    needs: setup
+    permissions:
+      contents: read
+      packages: read
+    uses: uw-datasci/nexus-workflows/.github/workflows/migrate-db.yml@v4
+    with:
+      node-version: ${{ needs.setup.outputs.node-version }}
+      pnpm-version: ${{ needs.setup.outputs.pnpm-version }}
+      # Set as a repository variable once the nexus-bot Infisical project exists.
+      infisical-project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+      infisical-secret-path: /db
+    secrets:
+      INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+      INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}

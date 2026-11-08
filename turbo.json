@@ -1,0 +1,26 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalPassThroughEnv": ["NEXT_RUNTIME"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "NODE_ENV",
+        "DATABASE_URL",
+        "DISCORD_APPLICATION_ID",
+        "DISCORD_PUBLIC_KEY",
+        "DISCORD_BOT_TOKEN",
+        "RAFT_APP_NAME",
+        "RAFT_DATABASE_URL"
+      ]
+    },
+    "lint": {},
+    "check-types": {},
+    "test": {
+      "passThroughEnv": ["TEST_DATABASE_URL"]
+    },
+    "dev": { "cache": false, "persistent": true }
+  }
+}
