@@ -1,6 +1,12 @@
 import { RaftClient } from "@uw-datasci/raft";
-import { parseGuildSettings, registry, type DispatchDeps } from "@nexus-bot/core";
-import { SettingsRepository, createDb } from "@nexus-bot/db";
+import {
+  createAdminApi,
+  eventCreate,
+  parseGuildSettings,
+  registry,
+  type DispatchDeps,
+} from "@nexus-bot/core";
+import { EventDraftRepository, SettingsRepository, createDb } from "@nexus-bot/db";
 import { createDiscordApi } from "@nexus-bot/discord";
 
 const REQUIRED = [
@@ -8,6 +14,8 @@ const REQUIRED = [
   "DISCORD_APPLICATION_ID",
   "DISCORD_BOT_TOKEN",
   "DATABASE_URL",
+  "ADMIN_INTERNAL_URL",
+  "NEXUS_BOT_INTERNAL_TOKEN",
 ] as const;
 
 interface Runtime {
@@ -29,7 +37,8 @@ export function getRuntime(): Runtime {
   >;
 
   // The Supabase transaction pooler: Vercel functions come and go, so no long-lived connections.
-  const settings = new SettingsRepository(createDb(env.DATABASE_URL, { pooled: true }));
+  const db = createDb(env.DATABASE_URL, { pooled: true });
+  const settings = new SettingsRepository(db);
 
   runtime = {
     publicKey: env.DISCORD_PUBLIC_KEY,
@@ -42,11 +51,23 @@ export function getRuntime(): Runtime {
         // Invalid rows throw a SettingsError, which surfaces as a 500 reported to Raft.
         return raw ? parseGuildSettings(guildId, raw) : null;
       },
-      reportError: (error, context) =>
+      reportError: (error, context, severity) =>
         RaftClient.getInstance().reportError(
           error instanceof Error ? error : new Error(String(error)),
-          context
+          context,
+          severity
         ),
+      services: {
+        eventDrafts: new EventDraftRepository(db),
+        adminApi: createAdminApi({
+          baseUrl: env.ADMIN_INTERNAL_URL,
+          token: env.NEXUS_BOT_INTERNAL_TOKEN,
+          // Only to call a preview deployment behind Vercel Deployment Protection.
+          bypassToken: process.env.ADMIN_BYPASS_TOKEN || undefined,
+        }),
+        // A missing key fails each run with a clear card instead of failing every interaction.
+        extractEvent: eventCreate.createClaudeExtractor({ apiKey: process.env.ANTHROPIC_API_KEY }),
+      },
     },
   };
   return runtime;

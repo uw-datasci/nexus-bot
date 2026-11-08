@@ -7,10 +7,17 @@ import type {
   RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "@nexus-bot/discord";
 import type { Capability } from "./gate";
+import type { Services } from "./services";
 import type { GuildKind, GuildSettings } from "./settings";
 
+export type Severity = "debug" | "info" | "warning" | "error" | "fatal";
+
 /** Report an error to wherever the transport sends them (Raft on Vercel). Never throws. */
-export type ReportError = (error: unknown, context?: Record<string, unknown>) => Promise<void>;
+export type ReportError = (
+  error: unknown,
+  context?: Record<string, unknown>,
+  severity?: Severity
+) => Promise<void>;
 
 /** What every handler gets besides the interaction. */
 export interface HandlerContext {
@@ -19,6 +26,8 @@ export interface HandlerContext {
   applicationId: string;
   reportError: ReportError;
   now: () => number;
+  /** Stores and clients features need, built by the transport (fakes in tests). */
+  services: Services;
 }
 
 /**
@@ -36,19 +45,22 @@ export type Handler<I> = (
   ctx: HandlerContext
 ) => Promise<HandlerResult> | HandlerResult;
 
-export interface Command {
-  definition: RESTPostAPIChatInputApplicationCommandsJSONBody;
+interface Gated {
   capability: Capability;
+  /** Shown instead of the gate's generic reason when the member's roles don't allow it. */
+  deniedMessage?: string;
+}
+
+export interface Command extends Gated {
+  definition: RESTPostAPIChatInputApplicationCommandsJSONBody;
   handle: Handler<APIChatInputApplicationCommandInteraction>;
 }
 
-export interface ComponentRoute {
-  capability: Capability;
+export interface ComponentRoute extends Gated {
   handle: Handler<APIMessageComponentInteraction>;
 }
 
-export interface ModalRoute {
-  capability: Capability;
+export interface ModalRoute extends Gated {
   handle: Handler<APIModalSubmitInteraction>;
 }
 

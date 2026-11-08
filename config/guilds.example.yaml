@@ -16,6 +16,8 @@ guilds:
       require_linked_accounts: false
       # While accounts aren't linked, these Discord roles stand for the website roles.
       # Capabilities (packages/core/src/gate.ts) say which website roles may use what.
+      # For the exec server at cutover: today's DISCORD_EXEC_ROLE_ID values (from admin's
+      # Infisical) go under `exec`. Any role listed here can use /event-create.
       role_ids:
         exec: ["000000000000000000"]
         admin: ["000000000000000000"] # VPs

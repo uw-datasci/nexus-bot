@@ -11,6 +11,7 @@ import {
 import { can, type Actor, type Capability } from "./gate";
 import type { Registry } from "./registry";
 import type { GuildSettings } from "./settings";
+import type { Services } from "./services";
 import type { FeatureModule, HandlerContext, HandlerResult, ReportError } from "./types";
 
 export interface DispatchDeps {
@@ -20,6 +21,7 @@ export interface DispatchDeps {
   discord: API;
   applicationId: string;
   reportError: ReportError;
+  services: Services;
   now?: () => number;
 }
 
@@ -65,11 +67,13 @@ export async function dispatch(
     applicationId: deps.applicationId,
     reportError: deps.reportError,
     now: deps.now ?? Date.now,
+    services: deps.services,
   };
 
   type Target = {
     module: FeatureModule;
     capability: Capability;
+    deniedMessage?: string;
     label: string;
     run: () => Promise<HandlerResult> | HandlerResult;
   };
@@ -86,6 +90,7 @@ export async function dispatch(
         target = {
           module: found.module,
           capability: found.command.capability,
+          deniedMessage: found.command.deniedMessage,
           label: `/${interaction.data.name}`,
           run: () => found.command.handle(chatInput, ctx),
         };
@@ -99,6 +104,7 @@ export async function dispatch(
         target = {
           module: found.module,
           capability: found.route.capability,
+          deniedMessage: found.route.deniedMessage,
           label: interaction.data.custom_id,
           run: () => found.route.handle(interaction, ctx),
         };
@@ -112,6 +118,7 @@ export async function dispatch(
         target = {
           module: found.module,
           capability: found.route.capability,
+          deniedMessage: found.route.deniedMessage,
           label: interaction.data.custom_id,
           run: () => found.route.handle(interaction, ctx),
         };
@@ -125,7 +132,11 @@ export async function dispatch(
     return { response: ephemeral(MESSAGES.unavailable) };
 
   const gate = can(actor, target.capability, settings);
-  if (!gate.allowed) return { response: ephemeral(gate.reason) };
+  if (!gate.allowed) {
+    const reason =
+      gate.code === "role" && target.deniedMessage ? target.deniedMessage : gate.reason;
+    return { response: ephemeral(reason) };
+  }
 
   const errorContext = {
     route: "discord:interactions",

@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "postgres": "^3.4.9"
+    "postgres": "^3.4.9",
+    "@nexus-bot/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

@@ -45,6 +45,6 @@ describe("guilds config", () => {
 
   it("plans each guild's full command set from the registry", () => {
     const plan = registrationPlan(parseGuildsConfig(EXAMPLE), registry);
-    expect(plan[0]?.commands.map((c) => c.name)).toEqual(["ping"]);
+    expect(plan[0]?.commands.map((c) => c.name)).toEqual(["ping", "event-create"]);
   });
 });

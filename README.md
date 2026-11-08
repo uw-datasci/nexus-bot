@@ -104,6 +104,60 @@ You need your own Discord application and test server, never the club's.
 
 The tunnel URL changes every time cloudflared restarts, so update the endpoint URL when it does.
 
+## `/event-create`
+
+Execs run `/event-create` in a thread where an event is being planned. The bot reads the thread,
+Claude (`claude-opus-5-5`, medium effort, 40 s timeout) extracts the details into a **public**
+preview card, and the exec picks a category, reviews the details in a modal and confirms. Admin
+then has an **unpublished** event with a Draft badge on admin.uwdatascience.ca/events, and
+nothing appears publicly until someone publishes it there.
+
+- Code: `packages/core/src/features/event-create/` (ported from uwdsc-website-v3's
+  `packages/server/admin/src/modules/discord-bot/`, behaviour unchanged). Drafts live in
+  `discord.event_drafts`.
+- The event is created through admin's `POST /api/internal/events/drafts`
+  (`ADMIN_INTERNAL_URL`, `NEXUS_BOT_INTERNAL_TOKEN`). Its validation messages show up in the
+  usual "⚠️ … [Fix]" message. Because that's a cross-app call, confirming acknowledges straight
+  away and creates the event in the background.
+- Only the person who ran it can use the card's controls. Errors and "only X can edit" are
+  ephemeral. Drafts expire after **1 hour**.
+- Rate limits, counted from drafts (failed runs included): **5 runs per exec per hour** and
+  **1 run per thread per minute** (`packages/core/src/features/event-create/handlers.ts`).
+- Times are typed and shown as `YYYY-MM-DD HH:mm` in **America/Toronto**. Times in the
+  spring-forward gap are rejected.
+- Who can run it: the guild's `role_ids` (exec, admin, pres) in `discord.settings`.
+- Errors go to Raft with `route: "discord:event-bot"`.
+- The bot needs **Message Content** intent (Bot → Privileged Gateway Intents) and View Channel +
+  Read Message History in the planning channels. Private threads: add the bot to the thread.
+- Spend: `ANTHROPIC_API_KEY` comes from the bot's own Claude Console workspace, whose monthly
+  spend limit is the hard ceiling.
+
+### Cutover from admin (B1a)
+
+It's the same Discord application, so nothing is re-invited and the cutover is one URL change.
+
+1. Put the exec server in `config/guilds.yaml`, with today's `DISCORD_EXEC_ROLE_ID` values
+   (admin's Infisical) under `role_ids.exec`. Run `pnpm migrate` and `pnpm seed-settings`
+   against the production database.
+2. Deploy `apps/http` with the variables below, then run `pnpm register-commands` with the
+   production application's ID and token. The guild's command set becomes `/event-create` and
+   `/ping`. Because the name stays `event-create`, Discord keeps the **same command ID**, so the
+   role visibility under Server Settings → Integrations is unchanged. Check the ID in the
+   script's output against the old one.
+3. In the Developer Portal → General Information, change **Interactions Endpoint URL** from
+   `https://admin.uwdatascience.ca/api/discord/interactions` to
+   `https://<nexus-bot deployment>/api/interactions`. Discord checks it on save.
+4. Run `/event-create` in a planning thread and confirm a Draft appears in admin.
+5. Record the cutover date on nexus-bot#1. It starts the one-week clock for removing the admin
+   code (uwdsc-website-v3#199).
+
+**Rollback:** paste `https://admin.uwdatascience.ca/api/discord/interactions` back into the
+Interactions Endpoint URL. The admin code stays until #199, and drafts started on one side can't
+be confirmed on the other, so anyone mid-draft runs `/event-create` again.
+
+Rehearse both directions on your personal test app first: point its endpoint at a local or
+preview nexus-bot, then at a preview admin, and back.
+
 ## Checks
 
 ```sh
@@ -126,6 +180,9 @@ variables:
 | `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN` | the club application                                                |
 | `DATABASE_URL`                                                      | Supabase transaction pooler, `nexus_bot` role                       |
 | `RAFT_APP_NAME`, `RAFT_DATABASE_URL`                                | Raft error reporting                                                |
+| `ANTHROPIC_API_KEY`                                                 | `/event-create` extraction (the bot's Claude Console workspace)     |
+| `ADMIN_INTERNAL_URL`, `NEXUS_BOT_INTERNAL_TOKEN`                    | admin's internal API (the token matches admin's)                    |
+| `ADMIN_BYPASS_TOKEN`                                                | optional: Vercel protection bypass, to test against a preview admin |
 | `NODE_AUTH_TOKEN`                                                   | read access to `@uw-datasci/raft` (used by `vercel.json`'s install) |
 
 Once it's deployed, set the application's Interactions Endpoint URL to

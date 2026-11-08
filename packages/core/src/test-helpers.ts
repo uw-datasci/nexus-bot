@@ -8,6 +8,7 @@ import {
 import { vi } from "vitest";
 import type { DispatchDeps } from "./dispatch";
 import type { Registry } from "./registry";
+import type { Services } from "./services";
 import { parseGuildSettings, type GuildSettings } from "./settings";
 
 export const GUILD = "100000000000000001";
@@ -70,6 +71,7 @@ export function deps(registry: Registry, overrides: Partial<DispatchDeps> = {}) 
       discord: {} as API,
       applicationId: "app",
       reportError,
+      services: {} as Services,
       now: () => 0,
       ...overrides,
     } satisfies DispatchDeps,

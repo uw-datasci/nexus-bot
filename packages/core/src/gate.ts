@@ -29,7 +29,8 @@ export interface Actor {
   roles: readonly string[];
 }
 
-export type GateResult = { allowed: true } | { allowed: false; reason: string };
+export type GateResult =
+  { allowed: true } | { allowed: false; code: "linked-accounts" | "role"; reason: string };
 
 export function can(actor: Actor, capability: Capability, settings: GuildSettings): GateResult {
   const rule = CAPABILITIES[capability];
@@ -38,6 +39,7 @@ export function can(actor: Actor, capability: Capability, settings: GuildSetting
   if (settings.requireLinkedAccounts) {
     return {
       allowed: false,
+      code: "linked-accounts",
       reason:
         "Linked accounts aren't supported yet. Ask the dev team to turn `require_linked_accounts` off.",
     };
@@ -45,5 +47,5 @@ export function can(actor: Actor, capability: Capability, settings: GuildSetting
 
   const allowedRoleIds = new Set(rule.flatMap((role) => settings.roleIds[role] ?? []));
   if (actor.roles.some((id) => allowedRoleIds.has(id))) return { allowed: true };
-  return { allowed: false, reason: "You don't have permission to use this." };
+  return { allowed: false, code: "role", reason: "You don't have permission to use this." };
 }

@@ -6,7 +6,7 @@ import {
   deferred,
   type API,
 } from "@nexus-bot/discord";
-import { createRegistry, parseGuildSettings, registry } from "@nexus-bot/core";
+import { createRegistry, parseGuildSettings, registry, type Services } from "@nexus-bot/core";
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { handleInteractionRequest, type RequestDeps } from "./handle-request";
 
@@ -46,6 +46,7 @@ function deps(): RequestDeps & { schedule: Mock<Schedule> } {
       loadSettings: async (id) =>
         id === GUILD ? parseGuildSettings(GUILD, { kind: "exec" }) : null,
       reportError: vi.fn(),
+      services: {} as Services,
     },
   };
 }

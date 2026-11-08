@@ -3,3 +3,4 @@ export * from "./connection";
 // and stays out of the HTTP function's bundle.
 export * from "./settings.repository";
 export * from "./usage.repository";
+export * from "./event-drafts.repository";

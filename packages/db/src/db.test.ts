@@ -12,10 +12,11 @@ import { UsageRepository } from "./usage.repository";
  * tests drop the `discord` schema. Without it they're skipped (CI always sets it).
  */
 const url = process.env.TEST_DATABASE_URL;
+const ALL = ["0001_discord_schema", "0002_event_drafts"];
 
 describe("loadMigrations", () => {
   it("reads the repo's migrations in order", () => {
-    expect(loadMigrations().map((m) => m.name)).toEqual(["0001_discord_schema"]);
+    expect(loadMigrations().map((m) => m.name)).toEqual(ALL);
   });
 
   it("rejects badly named files", () => {
@@ -38,20 +39,25 @@ describe.skipIf(!url)("database", () => {
   });
 
   it("creates the schema and tables, records them in its own table, and re-runs as a no-op", async () => {
-    expect(await migrate(db)).toEqual(["0001_discord_schema"]);
+    expect(await migrate(db)).toEqual(ALL);
     expect(await migrate(db)).toEqual([]);
 
     const tables = await db<{ table_name: string }[]>`
       SELECT table_name FROM information_schema.tables WHERE table_schema = 'discord' ORDER BY table_name`;
-    expect(tables.map((t) => t.table_name)).toEqual(["schema_migrations", "settings", "usage"]);
-    expect(await migrationStatus(db)).toEqual({ applied: ["0001_discord_schema"], pending: [] });
+    expect(tables.map((t) => t.table_name)).toEqual([
+      "event_drafts",
+      "schema_migrations",
+      "settings",
+      "usage",
+    ]);
+    expect(await migrationStatus(db)).toEqual({ applied: ALL, pending: [] });
     // Nothing in public: the website's migrations table is never touched.
     const [publicTable] = await db`SELECT to_regclass('public.schema_migrations') AS name`;
     expect(publicTable?.name).toBeNull();
   });
 
   it("reports pending migrations before the first run", async () => {
-    expect(await migrationStatus(db)).toEqual({ applied: [], pending: ["0001_discord_schema"] });
+    expect(await migrationStatus(db)).toEqual({ applied: [], pending: ALL });
   });
 
   it("rolls back everything when a migration fails", async () => {
