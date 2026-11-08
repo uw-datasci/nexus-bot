@@ -188,6 +188,22 @@ importers:
         specifier: ^8.72.1
         version: 8.72.1(eslint@9.39.5(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3)
 
+  packages/core:
+    dependencies:
+      '@nexus-bot/discord':
+        specifier: workspace:*
+        version: link:../discord
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.0
+        version: 24.19.2
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2))
+
   packages/discord:
     dependencies:
       '@discordjs/core':
