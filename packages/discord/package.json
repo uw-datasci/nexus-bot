@@ -1,0 +1,24 @@
+{
+  "name": "@nexus-bot/discord",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@discordjs/core": "^2.7.0",
+    "@discordjs/rest": "^2.6.3",
+    "discord-api-types": "^0.38.58"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
