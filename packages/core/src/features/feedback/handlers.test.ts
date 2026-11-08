@@ -142,10 +142,11 @@ function setup({
   let issueNumber = 11;
   let createCalls = 0;
   const filed: NewIssue[] = [];
-  const github: FeedbackGitHub = {
+  // Only what intake uses; updates.test.ts covers the rest.
+  const github: Pick<FeedbackGitHub, "isPublic" | "strictness" | "createIssue"> = {
     isPublic: vi.fn(async () => true),
     strictness: vi.fn(async () => "strict" as const),
-    createIssue: vi.fn(async (_repo, issue) => {
+    createIssue: vi.fn(async (_repo: string, issue: NewIssue) => {
       createCalls++;
       if (failIssues.includes(createCalls)) throw new GitHubError("GitHub returned 502", 502);
       filed.push(issue);
@@ -209,7 +210,7 @@ function setup({
     services: {
       usage,
       feedbackDrafts: store,
-      github,
+      github: github as FeedbackGitHub,
       screenshots,
       extractFeedback,
     } as Partial<Services> as Services,

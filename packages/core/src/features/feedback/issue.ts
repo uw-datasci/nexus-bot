@@ -27,7 +27,8 @@ export function neutralize(text: string): string {
   );
 }
 
-const quote = (text: string) =>
+/** Discord text as a Markdown quote, made inert. */
+export const quote = (text: string) =>
   neutralize(text)
     .split("\n")
     .map((line) => `> ${line}`)

@@ -75,7 +75,7 @@ const NOT_ALLOWED =
   "You can't send feedback here. It needs one of an app's feedback roles (and, for some apps, one of its channels).";
 
 type Member = NonNullable<APIModalSubmitInteraction["member"]>;
-const displayName = (member: Member) =>
+export const displayName = (member: Member) =>
   member.nick ?? member.user.global_name ?? member.user.username;
 
 const channelOf = (interaction: { channel?: unknown; channel_id?: string }) =>

@@ -127,4 +127,59 @@ describe("createGitHubApp", () => {
     await expect(unset.isPublic("uw-datasci/cxc")).rejects.toThrow(GitHubError);
     await expect(unset.isPublic("uw-datasci/cxc")).rejects.toThrow(/FEEDBACK_APP_ID/);
   });
+
+  it("reads PRs and issues, comments, reopens and labels for the Discord buttons", async () => {
+    const { fetch, calls } = fakeGitHub({
+      "GET /repos/uw-datasci/cxc/pulls/34": () =>
+        json({
+          number: 34,
+          html_url: "https://github.com/p/34",
+          state: "closed",
+          merged: true,
+          user: { login: "nexus-feedback[bot]", type: "Bot" },
+        }),
+      "GET /repos/uw-datasci/cxc/issues/12": () =>
+        json({
+          number: 12,
+          html_url: "https://github.com/i/12",
+          state: "closed",
+          labels: [{ name: "feedback" }, "route:agent"],
+          assignees: [{ login: "lead" }],
+        }),
+      "POST /repos/uw-datasci/cxc/issues/12/comments": () =>
+        json({ html_url: "https://github.com/i/12#c1" }, 201),
+      "PATCH /repos/uw-datasci/cxc/issues/12": () => json({}),
+      "POST /repos/uw-datasci/cxc/issues/12/labels": () => json([]),
+    });
+    const github = app(fetch);
+    expect(await github.getPull("uw-datasci/cxc", 34)).toEqual({
+      number: 34,
+      url: "https://github.com/p/34",
+      state: "closed",
+      merged: true,
+      author: "nexus-feedback[bot]",
+      authorIsBot: true,
+    });
+    expect(await github.getIssue("uw-datasci/cxc", 12)).toEqual({
+      number: 12,
+      url: "https://github.com/i/12",
+      state: "closed",
+      labels: ["feedback", "route:agent"],
+      assignees: ["lead"],
+    });
+    expect(await github.comment("uw-datasci/cxc", 12, "hi")).toEqual({
+      url: "https://github.com/i/12#c1",
+    });
+    await github.reopenIssue("uw-datasci/cxc", 12);
+    await github.addLabels("uw-datasci/cxc", 12, ["retriage"]);
+    const writes = calls.filter(
+      (c) => c.method !== "GET" && c.path.startsWith("/repos/uw-datasci/cxc/issues")
+    );
+    expect(writes.map((c) => [c.method, c.body])).toEqual([
+      ["POST", { body: "hi" }],
+      ["PATCH", { state: "open" }],
+      ["POST", { labels: ["retriage"] }],
+    ]);
+    await expect(github.getPull("uw-datasci/cxc", 99)).rejects.toMatchObject({ status: 404 });
+  });
 });

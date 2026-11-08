@@ -21,12 +21,35 @@ export interface CreatedIssue {
   url: string;
 }
 
+export interface PullInfo {
+  number: number;
+  url: string;
+  state: "open" | "closed";
+  merged: boolean;
+  author: string | null;
+  authorIsBot: boolean;
+}
+
+export interface IssueInfo {
+  number: number;
+  url: string;
+  state: "open" | "closed";
+  labels: string[];
+  assignees: string[];
+}
+
 export interface FeedbackGitHub {
   /** Whether the repo is public, for the card's warning. */
   isPublic(repo: string): Promise<boolean>;
   /** `strictness` from the repo's .github/feedback.yml (strict when unset or missing). */
   strictness(repo: string): Promise<Strictness>;
   createIssue(repo: string, issue: NewIssue): Promise<CreatedIssue>;
+  getPull(repo: string, number: number): Promise<PullInfo>;
+  getIssue(repo: string, number: number): Promise<IssueInfo>;
+  /** A comment on an issue or PR. */
+  comment(repo: string, number: number, body: string): Promise<{ url: string }>;
+  reopenIssue(repo: string, number: number): Promise<void>;
+  addLabels(repo: string, number: number, labels: string[]): Promise<void>;
 }
 
 export class GitHubError extends Error {
@@ -175,6 +198,77 @@ export function createGitHubApp({
       const strictness = parseStrictness(response.ok ? await response.text() : null);
       configs.set(repo, { strictness, at: now() });
       return strictness;
+    },
+
+    async getPull(repo, number) {
+      const response = await call(`/repos/${repo}/pulls/${number}`, await tokenFor(repo));
+      if (!response.ok) await fail(response, `Reading ${repo}#${number}`);
+      const pr = (await response.json()) as {
+        number: number;
+        html_url: string;
+        state: "open" | "closed";
+        merged?: boolean;
+        merged_at?: string | null;
+        user?: { login: string; type?: string } | null;
+      };
+      return {
+        number: pr.number,
+        url: pr.html_url,
+        state: pr.state,
+        merged: Boolean(pr.merged ?? pr.merged_at),
+        author: pr.user?.login ?? null,
+        authorIsBot: pr.user?.type === "Bot",
+      };
+    },
+
+    async getIssue(repo, number) {
+      const response = await call(`/repos/${repo}/issues/${number}`, await tokenFor(repo));
+      if (!response.ok) await fail(response, `Reading ${repo}#${number}`);
+      const issue = (await response.json()) as {
+        number: number;
+        html_url: string;
+        state: "open" | "closed";
+        labels?: (string | { name?: string })[];
+        assignees?: { login: string }[] | null;
+      };
+      return {
+        number: issue.number,
+        url: issue.html_url,
+        state: issue.state,
+        labels: (issue.labels ?? [])
+          .map((l) => (typeof l === "string" ? l : (l.name ?? "")))
+          .filter(Boolean),
+        assignees: (issue.assignees ?? []).map((a) => a.login),
+      };
+    },
+
+    async comment(repo, number, body) {
+      const response = await call(
+        `/repos/${repo}/issues/${number}/comments`,
+        await tokenFor(repo),
+        {
+          method: "POST",
+          body: { body },
+        }
+      );
+      if (!response.ok) await fail(response, `Commenting on ${repo}#${number}`);
+      return { url: ((await response.json()) as { html_url: string }).html_url };
+    },
+
+    async reopenIssue(repo, number) {
+      const response = await call(`/repos/${repo}/issues/${number}`, await tokenFor(repo), {
+        method: "PATCH",
+        body: { state: "open" },
+      });
+      if (!response.ok) await fail(response, `Reopening ${repo}#${number}`);
+    },
+
+    async addLabels(repo, number, labels) {
+      const response = await call(`/repos/${repo}/issues/${number}/labels`, await tokenFor(repo), {
+        method: "POST",
+        body: { labels },
+      });
+      if (!response.ok) await fail(response, `Labelling ${repo}#${number}`);
     },
 
     async createIssue(repo, issue) {

@@ -199,6 +199,27 @@ Who can use it, per app, is the guild's `feedback_apps` setting (see
 enough (CxC: `cxc-team`, or `VP` and `Design` together). An app can also be limited to some
 channels. Someone allowed for more than one app picks it in the modal.
 
+### Updates and replies
+
+The app repo's `feedback-notify.yml` (nexus-workflows) replies to the card when a fix's preview
+is ready, when it's live, when it's on staging, and when triage needs more information. It finds
+the card through the issue's hidden block and posts with the bot token, so the bot itself isn't
+involved. Organizers answer with the buttons on those replies
+(`packages/core/src/features/feedback/updates.ts`):
+
+| Button              | What the bot does                                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Looks good**      | Comments on the PR, and takes the two buttons off the message                                                                                                                                                                                                                  |
+| **Still not right** | Asks what's wrong. On an open `route:agent` PR it comments `@claude …`, and the mention workflow pushes a change, which leads to a new preview. On another open PR it mentions the issue's assignees. After the merge it comments on the issue, reopens it and adds `retriage` |
+| **Answer**          | Asks for the answer, comments it on the issue and adds `retriage`                                                                                                                                                                                                              |
+
+- Anyone allowed to send feedback for the repo's app can use them.
+- **Still not right** and **Answer** each lead to a paid agent run, so they're limited to **10 per
+  user per hour** (`discord.usage` feature `feedback-reply`).
+- The organizer's text is quoted with @-mentions broken up.
+- The custom_ids (`fb:good|again:<owner/repo>:<pr>:<issue>`, `fb:answer:<owner/repo>:<issue>`)
+  are a contract with `feedback-notify.yml`. Change both together.
+
 ### Setting up `/feedback`
 
 1. Install the nexus-feedback GitHub App on the app's repo (cxc), with the labels from
@@ -212,6 +233,8 @@ channels. Someone allowed for more than one app picks it in the modal.
    run `pnpm migrate`, `pnpm seed-settings` and `pnpm register-commands`.
 5. The bot needs View Channel, Read Message History and Send Messages (in threads too) where
    feedback is sent.
+6. For the updates: `DISCORD_BOT_TOKEN` in Infisical `/nexus-feedback`, the `retriage` label on
+   the app repo, and the notify job in its caller workflow (see nexus-workflows' README).
 
 ## Checks
 
