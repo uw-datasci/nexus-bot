@@ -1,0 +1,26 @@
+{
+  "name": "@nexus-bot/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nexus-bot/discord": "workspace:*",
+    "@anthropic-ai/sdk": "^0.131.0",
+    "luxon": "^3.7.2",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0",
+    "@types/luxon": "^3.7.1"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@nexus-bot/http",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nexus-bot/core": "workspace:*",
+    "@nexus-bot/db": "workspace:*",
+    "@nexus-bot/discord": "workspace:*",
+    "@uw-datasci/raft": "^1.0.1",
+    "@vercel/blob": "^2.8.2",
+    "next": "^16.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

@@ -13,12 +13,23 @@
         "DISCORD_PUBLIC_KEY",
         "DISCORD_BOT_TOKEN",
         "RAFT_APP_NAME",
-        "RAFT_DATABASE_URL"
+        "RAFT_DATABASE_URL",
+        "ANTHROPIC_API_KEY",
+        "ADMIN_INTERNAL_URL",
+        "NEXUS_BOT_INTERNAL_TOKEN",
+        "ADMIN_BYPASS_TOKEN",
+        "FEEDBACK_ANTHROPIC_API_KEY",
+        "FEEDBACK_APP_ID",
+        "FEEDBACK_APP_PRIVATE_KEY",
+        "BLOB_READ_WRITE_TOKEN"
       ]
     },
     "lint": {},
-    "check-types": {},
+    "check-types": {
+      "dependsOn": ["^check-types"]
+    },
     "test": {
+      "dependsOn": ["^test"],
       "passThroughEnv": ["TEST_DATABASE_URL"]
     },
     "dev": { "cache": false, "persistent": true }
