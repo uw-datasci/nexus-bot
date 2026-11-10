@@ -1,0 +1,93 @@
+name: CI Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 24
+  PNPM_VERSION: 12.8.1
+
+jobs:
+  setup:
+    name: Setup Variables
+    runs-on: ubuntu-latest
+    outputs:
+      node-version: ${{ env.NODE_VERSION }}
+      pnpm-version: ${{ env.PNPM_VERSION }}
+    steps:
+      - name: Output variables
+        run: echo "Variables mapped to outputs."
+
+  code-quality:
+    name: Code Quality
+    needs: setup
+    permissions:
+      contents: read
+      packages: read
+    uses: uw-datasci/nexus-workflows/.github/workflows/quality-gate.yml@v4
+    with:
+      node-version: ${{ needs.setup.outputs.node-version }}
+      pnpm-version: ${{ needs.setup.outputs.pnpm-version }}
+      lint-command: pnpm exec turbo lint
+      typecheck-command: pnpm exec turbo check-types
+
+  # The reusable gate has no test step. The db tests run against this throwaway Postgres.
+  test:
+    name: Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ needs.setup.outputs.pnpm-version }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@uw-datasci"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Formatting
+        run: pnpm format:check
+
+      - name: Run Tests
+        run: pnpm exec turbo test
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres

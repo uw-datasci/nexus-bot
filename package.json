@@ -1,0 +1,32 @@
+{
+  "name": "nexus-bot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo dev --filter=@nexus-bot/http",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "check-types": "turbo check-types",
+    "test": "turbo test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "migrate": "pnpm --filter @nexus-bot/scripts migrate",
+    "migrate:status": "pnpm --filter @nexus-bot/scripts migrate:status",
+    "seed-settings": "pnpm --filter @nexus-bot/scripts seed-settings",
+    "register-commands": "pnpm --filter @nexus-bot/scripts register-commands"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "turbo": "^2.11.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}
