@@ -78,7 +78,8 @@ pnpm migrate:status   # list applied and pending
 Use a direct or session-pooler connection for migrations. On Vercel, `DATABASE_URL` is the
 transaction pooler (`createDb(url, { pooled: true })` turns off prepared statements).
 On `main`, `.github/workflows/migrate-db.yml` runs migrations with `DATABASE_URL` from Infisical
-(folder `/db`, project from the `INFISICAL_PROJECT_SLUG` repository variable).
+(project `uwdsc-54e-y`, folder `/nexus-bot/db`; `prod` on `main`, `dev` otherwise). The app's
+runtime secrets live in `/nexus-bot` and are synced to Vercel from there.
 
 ## Local development
 

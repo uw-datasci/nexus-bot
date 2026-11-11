@@ -2,7 +2,7 @@ name: Run Database Migrations
 
 # Applies packages/db/migrations to the `discord` schema. `main` uses Infisical's prod
 # environment and any other ref uses dev (decided inside the shared workflow).
-# DATABASE_URL in Infisical (folder /db) must be a direct or session-pooler connection for the
+# DATABASE_URL in Infisical (folder /nexus-bot/db) must be a direct or session-pooler connection for the
 # nexus_bot role: DDL doesn't belong on the transaction pooler.
 
 on:
@@ -23,6 +23,7 @@ permissions:
 env:
   NODE_VERSION: 24
   PNPM_VERSION: 12.8.1
+  INFISICAL_PROJECT_SLUG: uwdsc-54e-y
 
 jobs:
   setup:
@@ -32,6 +33,7 @@ jobs:
     outputs:
       node-version: ${{ env.NODE_VERSION }}
       pnpm-version: ${{ env.PNPM_VERSION }}
+      infisical-project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
     steps:
       - name: Output variables
         run: echo "Variables mapped to outputs."
@@ -46,9 +48,8 @@ jobs:
     with:
       node-version: ${{ needs.setup.outputs.node-version }}
       pnpm-version: ${{ needs.setup.outputs.pnpm-version }}
-      # Set as a repository variable once the nexus-bot Infisical project exists.
-      infisical-project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
-      infisical-secret-path: /db
+      infisical-project-slug: ${{ needs.setup.outputs.infisical-project-slug }}
+      infisical-secret-path: /nexus-bot/db
     secrets:
       INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
       INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
