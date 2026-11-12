@@ -366,7 +366,6 @@ describe("/feedback", () => {
     expect(card.content).toContain(
       "📝 **Feedback for cxc** from <@400000000000000001>. From this thread (2 messages"
     );
-    expect(card.content).toContain("uw-datasci/cxc is public");
     expect(t.draft()).toMatchObject({
       mode: "thread",
       message_id: CARD_ID,

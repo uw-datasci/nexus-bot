@@ -179,8 +179,8 @@ triage workflow (nexus-workflows `feedback-triage.yml`) routes them. Spec: Feedb
 - A **public** preview card lists the items. The runner can leave items out, set the environment
   for all of them or **Edit** one (title, type, page, summary, environment), then **Create**.
   Create stays disabled until every kept item has an environment, which is prefilled from the
-  modal or from a page URL (the production host means Production, any other URL Staging). The
-  card warns when the repo is public. Only the runner can use it, and it expires after 1 hour.
+  modal or from a page URL (the production host means Production, any other URL Staging). Only
+  the runner can use it, and it expires after 1 hour.
 - Create files one issue per item through the nexus-feedback GitHub App, labelled `feedback`,
   `feedback:<type>` and `env:<prod|staging>`. The body quotes the feedback (with GitHub
   @-mentions broken up) and ends with `<!-- nexus-feedback {"guild","channel","message","user"} -->`,

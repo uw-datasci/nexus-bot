@@ -190,11 +190,6 @@ export function buildPreviewCard(draft: FeedbackDraft, app: FeedbackApp): Messag
       `Already filed: ${filed.map((i) => `[#${i.issue!.number}](${i.issue!.url})`).join(", ")}.`
     );
   }
-  if (draft.public_repo) {
-    lines.push(
-      `⚠️ **${app.repo} is public**: these issues, quotes and screenshots will be visible to anyone.`
-    );
-  }
   lines.push(`Expires <t:${unix(draft.expires_at)}:R>.`);
 
   return {

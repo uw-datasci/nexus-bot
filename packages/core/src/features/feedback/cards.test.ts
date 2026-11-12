@@ -28,9 +28,9 @@ const embedChars = (
   );
 
 describe("preview card", () => {
-  it("warns that the repo is public, and blocks Create until every item has an environment", () => {
+  it("blocks Create until every item has an environment", () => {
     const card = buildPreviewCard(draft({ items: [item(), item({ environment: null })] }), CXC);
-    expect(card.content).toContain("⚠️ **uw-datasci/cxc is public**");
+    expect(card.content).not.toContain("public");
     expect(card.content).toContain(
       "From this thread (1 message: [1](https://discord.com/channels/1/2/3))"
     );
@@ -40,7 +40,6 @@ describe("preview card", () => {
     const ready = buildPreviewCard(draft({ items: [item(), item({ dropped: true })] }), CXC);
     expect(button(ready, "create")).toMatchObject({ disabled: false, label: "Create issue" });
     expect(ready.embeds?.[1]?.title).toMatch(/^~~2\./);
-    expect(buildPreviewCard(draft({ public_repo: false }), CXC).content).not.toContain("public");
   });
 
   it("fits 10 long items in Discord's 6000-character embed limit, within 5 rows", () => {
