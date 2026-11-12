@@ -32,6 +32,7 @@ guilds:
           role_sets:
             - ["000000000000000000"] # cxc-team
             - ["000000000000000000", "000000000000000000"] # VP + Design
+            - ["000000000000000000", "000000000000000000"] # VP + Dev
           # Optional: only in these channels (threads count by their parent). Empty = anywhere.
           channels: []
 
